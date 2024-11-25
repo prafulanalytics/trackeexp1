@@ -118,6 +118,7 @@ google-pasta==0.2.0
 graphviz==0.20.1
 greenlet @ file:///private/var/folders/sy/f16zz6x50xz3113nwtb9bvq00000gp/T/abs_10cuim1il_/croot/greenlet_1702059962773/work
 grpcio==1.48.1
+gunicorn==23.0.0
 h11==0.13.0
 h5py==2.10.0
 HeapDict @ file:///Users/ktietz/demo/mc3/conda-bld/heapdict_1630598515714/work
