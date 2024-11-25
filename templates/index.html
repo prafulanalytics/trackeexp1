@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> 3D Soccer Pitch Visualization with Graphs</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: white;
+            overflow-y: auto;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        /* Top Bar Styling */
+        .top-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+        }
+
+        .toggle-button {
+            padding: 8px 15px;
+            background-color: #ffffff;
+            color: #007bff;
+            border: 1px solid #007bff;
+            border-radius: 3px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .toggle-button:hover {
+            background-color: #0056b3;
+            color: white;
+        }
+
+        /* Controls Section Styling */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            width: 95%; /* Adjusted to use 95% of the screen width */
+            max-width: 1400px; /* Limit the maximum width for larger screens */
+            padding: 20px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            margin: 20px auto;
+            box-sizing: border-box;
+        }
+
+        /* Upload Container Styling */
+        .upload-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 200px;
+            gap: 10px;
+        }
+
+        .upload-container h3 {
+            margin: 0;
+            font-size: 1.1em;
+        }
+
+        /* Ball Column Selection Styling */
+        .ball-column-selection {
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-start;
+            gap: 20px;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .ball-column-selection div {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ball-column-selection label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .ball-column-selection select {
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            width: 100%;
+        }
+
+        /* Button Styling */
+        .controls button {
+            padding: 10px;
+            background-color: #007bff;
+            border: none;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .controls button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: row;
+                align-items: center;
+                width: 100%;
+                padding: 15px;
+            }
+            .ball-column-selection {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .upload-container {
+                width: 100%;
+            }
+        }
+        .playback-controls,
+        .graph-settings,
+        .playback-buttons,
+        .step-controls {
+            border: 1px solid #ddd;
+            padding: 5px;
+            border-radius: 5px;
+            background-color: #ffffff;
+        }
+
+        .playback-controls input[type="range"] {
+            width: 100%;
+        }
+
+        .step-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .playback-buttons button,
+        .step-controls button {
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .playback-buttons button:hover,
+        .step-controls button:hover {
+            background-color: #0056b3;
+        }
+
+        .frame-selection {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+
+        .frame-selection label {
+            margin-right: 10px;
+        }
+
+        .frame-selection select,
+        .frame-selection input[type="range"],
+        .frame-selection button {
+            margin-bottom: 10px;
+        }
+
+        /* Main content should take all remaining space */
+        .main-content {
+            display: flex;
+            width: 90%;
+            flex-grow: 1; /* Expand to fill remaining height */
+            padding: 10px;
+            box-sizing: border-box;
+            overflow-y: auto; /* Allow scrolling vertically */
+            overflow-x: hidden; /* Prevent horizontal scrolling if not needed */
+        }
+
+        /* Left container styling */
+        .left-container {
+            display: flex;
+            flex-direction: column;
+            width: 60%; /* 60% of the width */
+            height: 100%; /* Fill the height of the main-content */
+            padding-right: 10px;
+            box-sizing: border-box;
+        }
+
+        .video-container,
+        .pitch-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column; /* Stack items vertically */
+            align-items: center;     /* Center items horizontally */
+            background-color: #f9f9f9;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Make the video fill the container */
+        .video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Ensures the video covers the entire container */
+        }
+
+        /* Make the soccer pitch fill the container */
+        .pitch-container canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Right container styling */
+        .right-container {
+            width: 40%; /* 40% of the width */
+            height: 100%; /* Fill the height of the main-content */
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto; /* Ensure the right container can scroll */
+            padding-left: 10px;
+            box-sizing: border-box;
+        }
+
+        /* Graph container styling */
+        .graphs-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            background-color: #f9f9f9;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            height: 100%;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Top section with toggle buttons centered at the top -->
+        <div class="top-bar">
+            <button class="toggle-button" data-target="uploadSection">Upload Video and Data</button>
+            <button class="toggle-button" data-target="timeSection">Set Video and Data Time</button>
+        </div>
+
+        <!-- Upload Section -->
+        <div class="controls" id="uploadSection">
+            <div class="upload-container">
+                <h3>Upload and Play Video</h3>
+                <input type="file" id="videoUpload" accept="video/*">
+                <button id="uploadButton">Submit</button>
+            </div>
+            <div class="upload-container">
+                <h3>Upload Ball Data</h3>
+                <input type="file" id="dataUpload" accept=".csv">
+                <button id="dataUploadButton">Submit</button>
+            </div>
+            <div class="upload-container">
+                <h3>Upload Home Data</h3>
+                <input type="file" id="homeDataUpload" accept=".csv">
+                <button id="homeDataUploadButton">Submit</button>
+            </div>
+            <div class="upload-container">
+                <h3>Upload Away Data</h3>
+                <input type="file" id="awayDataUpload" accept=".csv">
+                <button id="awayDataUploadButton">Submit</button>
+            </div>
+
+            <!-- Ball Column Selection -->
+            <div class="ball-column-selection">
+                <div>
+                    <label for="ballXColumn">X Column:</label>
+                    <select id="ballXColumn">
+                        <option value="">Select X Column</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="ballYColumn">Y Column:</label>
+                    <select id="ballYColumn">
+                        <option value="">Select Y Column</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="ballZColumn">Z Column:</label>
+                    <select id="ballZColumn">
+                        <option value="">Select Z Column</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls" id="timeSection">
+            <!-- Set Video and Data Time -->
+            <div>
+                <h3>Set Video Time</h3>
+                <input type="number" id="videoTime" min="0" step="0.1">
+                <button id="setVideoTimeButton">Set</button>
+            </div>
+            <div>
+                <h3>Set Data Time</h3>
+                <input type="number" id="dataTime" min="0" step="0.1">
+                <button id="setDataTimeButton">Set</button>
+            </div>
+    
+            <!-- Playback Controls -->
+            <div class="playback-controls">
+                <h3>Playback Speed</h3>
+                <label for="playbackRate">Speed:</label>
+                <input type="range" id="playbackRate" min="0.5" max="2" value="1" step="0.1">
+                <span id="rateDisplay">1x</span>
+            </div>
+    
+            <!-- Graph Settings -->
+            <div class="graph-settings">
+                <h3>Graph Settings</h3>
+                <label for="numberOfGraphs">Number of Graphs:</label>
+                <select id="numberOfGraphs">
+                    <option value="1">1</option>
+                </select>
+                <div id="graphSelectors" class="graph-selectors"></div>
+            </div>
+    
+            <!-- Playback Buttons -->
+            <div class="playback-buttons">
+                <h3>Video and Data Controls</h3>
+                <button id="playButton">Play Video and Data</button>
+                <button id="playControlButton">Play</button>
+                <button id="stopControlButton">Stop</button>
+                <button id="resetButton">Reset</button>
+            </div>
+    
+            <!-- Step Controls -->
+            <div class="step-controls">
+                <h3>Step Controls</h3>
+                <label for="stepLength">Step Length: </label>
+                <select id="stepLength">
+                    <option value="0.1">0.1s</option>
+                    <option value="0.5">0.5s</option>
+                    <option value="1">1s</option>
+                    <option value="5">5s</option>
+                </select>
+                <button id="forwardButton">Forward</button>
+                <button id="backwardButton">Backward</button>
+            </div>
+
+        <div class="frame-selection">
+            <h3>Play Data Between Frames</h3>
+            <label for="startFrame">Start Frame (A):</label>
+            <input type="number" id="startFrame" min="1" placeholder="Enter start frame" autocomplete="off">
+            
+            <label for="endFrame">End Frame (B):</label>
+            <input type="number" id="endFrame" min="1" placeholder="Enter end frame" autocomplete="off">
+            
+            <button id="setFrameRangeButton">Set Frame Range</button>
+        
+            <div class="slider-container">
+                <!-- Slider for playback control with frame numbers -->
+                <input type="range" id="frameSlider" min="0" max="0" value="0" step="1" style="width: 100%;">
+                <span id="currentFrameLabel">Frame: 0</span>
+            </div>
+        </div>
+        <div class="main-content">
+            <!-- Left container for video and pitch -->
+            <div class="left-container">
+                <div class="video-container">
+                    <video id="videoPlayer" controls></video>
+                    <div>Current Time: <span id="timestampDisplay">0:00:00.000</span></div>
+                </div>
+                <div class="pitch-container">
+                    <canvas id="soccerPitch"></canvas>
+                </div>
+            </div>
+            <!-- Right container for graphs -->
+            <div class="right-container">
+                <div class="graphs-container" id="graphs">
+                    <!-- Graphs will be dynamically added here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            let dataPoints = [];
+            let homeData = [];
+            let awayData = [];
+            let availableColumns = [];
+            let chartObjects = [];
+            let ballMarker;
+            let setVideoTime = 0;
+            let setDataTime = 0;
+            let dataPlaybackRate = 1;
+            let homeMarkers = {};
+            let awayMarkers = {};
+            let dataPlayStartTime = 0;
+            let isPlaying = false;
+            let initialPlay = true;
+            let frameStartTime = 0;
+            let frameEndTime = 0;
+            let currentDataIndex = 0;
+            let videoDuration = 0;
+            let isSyncing = false;
+
+
+            // Function to handle video upload and play
+            document.getElementById('uploadButton').addEventListener('click', function() {
+                const videoUpload = document.getElementById('videoUpload');
+                const videoPlayer = document.getElementById('videoPlayer');
+                if (videoUpload.files.length > 0) {
+                    const file = videoUpload.files[0];
+                    const url = URL.createObjectURL(file);
+                    videoPlayer.src = url;
+                } else {
+                    alert('Please select a video file to upload.');
+                }
+            });
+
+            // Function to handle data upload
+            document.getElementById('dataUploadButton').addEventListener('click', async function () {
+                const dataUpload = document.getElementById('dataUpload');
+                if (dataUpload.files.length > 0) {
+                    const file = dataUpload.files[0];
+                    const formData = new FormData();
+                    formData.append('data', file);
+
+                    const response = await fetch('/upload_data', {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    const result = await response.json();
+                    if (response.ok) {
+                        dataPoints = result.data.filter(row => row.N);
+
+                        // Automatically detect the initial frame value
+                        initialFrame = detectInitialFrame(dataPoints);
+                        console.log(`Detected initial frame: ${initialFrame}`);
+
+                        // Get the available columns from the uploaded data
+                        availableColumns = result.columns;
+                        console.log("Available columns:", availableColumns);
+
+                        if (dataPoints.length === 0 || initialFrame === null) {
+                            alert('No valid data points found.');
+                            return;
+                        }
+                        populateColumnSelects();
+                        populateNumberOfGraphsSelect();
+                    } else {
+                        alert(result.error);
+                    }
+                } else {
+                    alert('Please select a data file to upload.');
+                }
+            });
+
+           
+
+            // Function to handle home data upload
+            document.getElementById('homeDataUploadButton').addEventListener('click', async function() {
+                const homeDataUpload = document.getElementById('homeDataUpload');
+                
+                if (homeDataUpload.files.length > 0) {
+                    const file = homeDataUpload.files[0];
+                    const formData = new FormData();
+                    formData.append('homeData', file);
+
+                    const response = await fetch('/upload_home_data', {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    const result = await response.json();
+                    if (response.ok) {
+                        homeData = result.data;
+                    } else {
+                        alert(result.error);
+                    }
+                } else {
+                    alert('Please select a home data file to upload.');
+                }
+            });
+
+            // Function to handle away data upload
+            document.getElementById('awayDataUploadButton').addEventListener('click', async function() {
+                const awayDataUpload = document.getElementById('awayDataUpload');
+                
+                if (awayDataUpload.files.length > 0) {
+                    const file = awayDataUpload.files[0];
+                    const formData = new FormData();
+                    formData.append('awayData', file);
+
+                    const response = await fetch('/upload_away_data', {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    const result = await response.json();
+                    if (response.ok) {
+                        awayData = result.data;
+                    } else {
+                        alert(result.error);
+                    }
+                } else {
+                    alert('Please select an away data file to upload.');
+                }
+            });
+
+            function populateColumnSelects() {
+                const ballXColumn = document.getElementById('ballXColumn');
+                const ballYColumn = document.getElementById('ballYColumn');
+                const ballZColumn = document.getElementById('ballZColumn');
+                [ballXColumn, ballYColumn, ballZColumn].forEach(select => {
+                    select.innerHTML = '<option value="">Select Column</option>';
+                    availableColumns.forEach(column => {
+                        const option = document.createElement('option');
+                        option.value = column;
+                        option.textContent = column;
+                        select.appendChild(option);
+                    });
+                });
+            }
+
+            function logger(message) {
+                const timestamp = new Date().toISOString();
+                console.log(`[${timestamp}] ${message}`);
+            }
+
+
+            function populateNumberOfGraphsSelect() {
+                const numberOfGraphsSelect = document.getElementById('numberOfGraphs');
+                numberOfGraphsSelect.innerHTML = '';
+                for (let i = 0; i <= availableColumns.length; i++) {
+                    const option = document.createElement('option');
+                    option.value = i;
+                    option.textContent = i;
+                    numberOfGraphsSelect.appendChild(option);
+                }
+            }
+
+
+            
+            document.getElementById('numberOfGraphs').addEventListener('change', updateGraphSelectors);
+
+            function updateGraphSelectors() {
+                const numberOfGraphs = parseInt(document.getElementById('numberOfGraphs').value, 10);
+                const graphSelectorsContainer = document.getElementById('graphSelectors');
+                graphSelectorsContainer.innerHTML = '';
+                for (let i = 0; i < numberOfGraphs; i++) {
+                    const selectorDiv = document.createElement('div');
+                    selectorDiv.className = 'graph';
+                    const label = document.createElement('label');
+                    label.textContent = `Select Column for Graph ${i}`;
+                    selectorDiv.appendChild(label);
+                    const select = document.createElement('select');
+                    select.className = 'columnSelect';
+                    select.dataset.index = i;
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = '';
+                    defaultOption.textContent = 'Select a column';
+                    select.appendChild(defaultOption);
+                    availableColumns.forEach(column => {
+                        const option = document.createElement('option');
+                        option.value = column;
+                        option.textContent = column;
+                        select.appendChild(option);
+                    });
+                    select.addEventListener('change', handleGraphColumnSelectChange);
+                    selectorDiv.appendChild(select);
+                    graphSelectorsContainer.appendChild(selectorDiv);
+                }
+                updateNumberOfGraphs();
+            }
+
+            function handleGraphColumnSelectChange(event) {
+                updateNumberOfGraphs();
+            }
+
+            function updateNumberOfGraphs() {
+                const graphsContainer = document.getElementById('graphs');
+                const numberOfGraphs = parseInt(document.getElementById('numberOfGraphs').value, 10);
+                const selectedColumns = Array.from(document.querySelectorAll('.columnSelect')).map(select => select.value);
+                graphsContainer.innerHTML = '';
+                chartObjects = [];
+                for (let i = 0; i < numberOfGraphs; i++) {
+                    if (selectedColumns[i]) {
+                        const canvas = document.createElement('canvas');
+                        canvas.id = `dataChart${i}`;
+                        canvas.className = 'graph';
+                        graphsContainer.appendChild(canvas);
+                        const ctx = canvas.getContext('2d');
+                        const chart = new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                datasets: [{
+                                    label: `Graph ${i + 1}`,
+                                    borderColor: 'rgba(75, 192, 192, 1)',
+                                    borderWidth: 1,
+                                    fill: false,
+                                    data: []
+                                }]
+                            },
+                            options: {
+                                scales: {
+                                    x: {
+                                        type: 'linear',
+                                        position: 'bottom',
+                                        title: {
+                                            display: true,
+                                            text: 'Timestamp (s)'
+                                        }
+                                    },
+                                    y: {
+                                        title: {
+                                            display: true,
+                                            text: selectedColumns[i]
+                                        }
+                                    }
+                                },
+                                plugins: {
+                                    annotation: {
+                                        annotations: {
+                                            currentTimestampLine: {
+                                                type: 'line',
+                                                mode: 'vertical',
+                                                scaleID: 'x',
+                                                borderColor: 'red',
+                                                borderWidth: 2,
+                                                label: {
+                                                    content: 'Current Time',
+                                                    enabled: true,
+                                                    position: 'top'
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                        chartObjects.push(chart);
+                    }
+                }
+            }
+
+
+            function arraysEqual(arr1, arr2) {
+                if (arr1.length !== arr2.length) return false;
+                for (let i = 0; i < arr1.length; i++) {
+                    if (arr1[i].x !== arr2[i].x || arr1[i].y !== arr2[i].y) return false;
+                }
+                return true;
+            }
+            
+
+            const canvas = document.getElementById('soccerPitch');
+            const engine = new BABYLON.Engine(canvas, true);
+            const scene = new BABYLON.Scene(engine);
+
+            scene.clearColor = new BABYLON.Color4(0.1, 0.1, 0.1, 0.9);
+
+            const camera = new BABYLON.ArcRotateCamera("camera", Math.PI / 2, Math.PI / 4, 200, BABYLON.Vector3.Zero(), scene);
+            camera.attachControl(canvas, true);
+
+            // Set camera limits
+           // camera.lowerRadiusLimit = 100; // Minimum zoom
+            //camera.upperRadiusLimit = 300; // Maximum zoom
+            //camera.lowerBetaLimit = 0; // Lower pitch angle
+            //camera.upperBetaLimit = Math.PI / 2; // Upper pitch angle
+
+            const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0), scene);
+            light.intensity = 0.6;
+
+            const directionalLight = new BABYLON.DirectionalLight("dirLight", new BABYLON.Vector3(-1, -2, -1), scene);
+            directionalLight.position = new BABYLON.Vector3(50, 100, 50);
+            directionalLight.intensity = 0.8;
+
+            const shadowGenerator = new BABYLON.ShadowGenerator(1024, directionalLight);
+            shadowGenerator.useBlurExponentialShadowMap = true;
+            shadowGenerator.blurKernel = 100;
+
+            const pitch = BABYLON.MeshBuilder.CreateGround("pitch", { width: 105, height: 68, subdivisions: 1 }, scene);
+            pitch.position.y = 0.0001;
+            const pitchMaterial = new BABYLON.StandardMaterial("Mat", scene);
+            pitchMaterial.diffuseColor = new BABYLON.Color3(0.5, 1, 0.5);
+
+            pitchMaterial.emissiveColor = new BABYLON.Color3(0.02, 0.03, 0.1);
+            const grassTexture = new BABYLON.Texture("textures/download.jpeg", scene);
+            grassTexture.level = 0.9;
+
+            pitchMaterial.emissiveColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+
+            pitchMaterial.diffuseTexture = grassTexture;
+            pitchMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+            pitch.material = pitchMaterial;
+            pitch.receiveShadows = true;
+
+            const sideHeight = .5;
+            const pitchSides = [
+                BABYLON.MeshBuilder.CreateBox("side1", {width: 105, height: sideHeight, depth: 1}, scene),
+                BABYLON.MeshBuilder.CreateBox("side2", {width: 105, height: sideHeight, depth: 1}, scene),
+                BABYLON.MeshBuilder.CreateBox("side3", {width: 1, height: sideHeight, depth: 68}, scene),
+                BABYLON.MeshBuilder.CreateBox("side4", {width: 1, height: sideHeight, depth: 68}, scene)
+            ];
+
+            pitchSides[0].position = new BABYLON.Vector3(0, -sideHeight / 2, 68 / 2);
+            pitchSides[1].position = new BABYLON.Vector3(0, -sideHeight / 2, -68 / 2);
+            pitchSides[2].position = new BABYLON.Vector3(-105 / 2, -sideHeight / 2, 0);
+            pitchSides[3].position = new BABYLON.Vector3(105 / 2, -sideHeight / 2, 0);
+
+            const sideMaterial = new BABYLON.StandardMaterial("sideMat", scene);
+            sideMaterial.diffuseTexture = new BABYLON.Texture("textures/mud.jpeg", scene);
+            pitchSides.forEach(side => {
+                side.material = sideMaterial;
+                side.receiveShadows = true;
+            });
+
+            const drawLine = (points, name) => {
+                const lines = BABYLON.MeshBuilder.CreateLines(name, {points: points.map(p => new BABYLON.Vector3(p[0], 0.1, p[1]))}, scene);
+                lines.color = new BABYLON.Color3(1, 1, 1);
+                lines.receiveShadows = true;
+            };
+
+            drawLine([[0, -34], [0, 34]], "halfwayLine");
+
+            const centerCircle = BABYLON.MeshBuilder.CreateTorus("centerCircle", {diameter: 18.3, thickness: 0.4, tessellation: 64}, scene);
+            centerCircle.rotation.x = Math.PI;
+            centerCircle.position.y = 0.1;
+            centerCircle.receiveShadows = true;
+
+            const penaltyAreaPoints = [
+                [[-52.5, -20.15], [-36, -20.15], [-36, 20.15], [-52.5, 20.15]],
+                [[52.5, -20.15], [36, -20.15], [36, 20.15], [52.5, 20.15]]
+            ];
+            penaltyAreaPoints.forEach((points, i) => drawLine([...points, points[0]], `penaltyArea${i}`));
+
+            const goalAreaPoints = [
+                [[-52.5, -9.16], [-47, -9.16], [-47, 9.16], [-52.5, 9.16]],
+                [[52.5, -9.16], [47, -9.16], [47, 9.16], [52.5, 9.16]]
+            ];
+            goalAreaPoints.forEach((points, i) => drawLine([...points, points[0]], `goalArea${i}`));
+
+            const penaltySpot = (x) => {
+                const spot = BABYLON.MeshBuilder.CreateDisc(`penaltySpot${x}`, {radius: 0.2, tessellation: 16}, scene);
+                spot.rotation.x = Math.PI;
+                spot.position.y = 0.1;
+            };
+            penaltySpot(36);
+            penaltySpot(-36);
+
+            const createGoalPost = (x) => {
+                const postHeight = 2.44;
+                const postWidth = 7.32;
+                const postThickness = 0.2;
+
+                const leftPost = BABYLON.MeshBuilder.CreateBox(`leftPost${x}`, {height: postHeight, width: postThickness, depth: postThickness}, scene);
+                leftPost.position = new BABYLON.Vector3(x, postHeight / 2, -postWidth / 2);
+                
+                const rightPost = BABYLON.MeshBuilder.CreateBox(`rightPost${x}`, {height: postHeight, width: postThickness, depth: postThickness}, scene);
+                rightPost.position = new BABYLON.Vector3(x, postHeight / 2, postWidth / 2);
+
+                const crossbar = BABYLON.MeshBuilder.CreateBox(`crossbar${x}`, {height: postThickness, width: postThickness, depth: postWidth}, scene);
+                crossbar.position = new BABYLON.Vector3(x, postHeight, 0);
+                
+                [leftPost, rightPost, crossbar].forEach(post => {
+                    post.material = new BABYLON.StandardMaterial("postMat", scene);
+                    post.material.diffuseColor = new BABYLON.Color3(1, 1, 1);
+                });
+            };
+
+            createGoalPost(-52.5);
+            createGoalPost(52.5);
+
+
+            ballMarker = BABYLON.MeshBuilder.CreateSphere("ballMarker", { diameter: 1 }, scene);
+            ballMarker.position.y = .5;
+
+            const ballMaterial = new BABYLON.StandardMaterial("ballMaterial", scene);
+            const texturePath = "textures/images.jpeg";
+            ballMaterial.diffuseTexture = new BABYLON.Texture(texturePath, scene, false, false, BABYLON.Texture.TRILINEAR_SAMPLINGMODE);
+
+            ballMarker.material = ballMaterial;
+            ballMarker.material.diffuseColor = new BABYLON.Color3(1, 1, 1);
+            ballMaterial.emissiveColor = new BABYLON.Color3(8, 8, 8);
+            ballMaterial.level = 0.6
+
+            ballMarker.material = ballMaterial;
+            light.intensity = 2;
+            light.diffuse = new BABYLON.Color3(1, 1, 1);
+
+            ballMarker.receiveShadows = true;
+            shadowGenerator.addShadowCaster(ballMarker);
+
+            const shadowPlanes = [];
+            for (let i = 0; i < 300; i++) {
+                const plane = BABYLON.MeshBuilder.CreatePlane(`shadowPlane${i}`, { size: 1 }, scene);
+                plane.position.y = 0.1;
+                plane.rotation.x = Math.PI / 2;
+                plane.material = new BABYLON.StandardMaterial(`shadowMat${i}`, scene);
+                plane.material.diffuseColor = new BABYLON.Color3(2, 2, 1);
+                plane.material.alpha = 1 - i * 0.002;
+                plane.isVisible = false;
+                shadowPlanes.push(plane);
+            }
+
+            const createStands = () => {
+                const standHeight = 1;
+                const standWidth = 16;
+                const standDepth = 2;
+                const gap = 5;
+                const rows = 6;
+
+                const createStandSection = (position, rotation, direction) => {
+                    for (let row = 0; row < rows; row++) {
+                        const height = row * standHeight;
+                        const depth = row * standDepth;
+                        let pos = new BABYLON.Vector3(position.x, height, position.z);
+
+                        if (direction === 'forward') {
+                            pos.z -= row * standDepth;
+                        } else if (direction === 'backward') {
+                            pos.z += row * standDepth;
+                        } else if (direction === 'left') {
+                            pos.x += row * standDepth;
+                        } else if (direction === 'right') {
+                            pos.x -= row * standDepth;
+                        }
+
+                        const stand = BABYLON.MeshBuilder.CreateBox(`standRow${row}`, {height: standHeight, width: standWidth, depth: standDepth}, scene);
+                        stand.position = pos;
+                        stand.rotation.y = rotation;
+                        const standMaterial = new BABYLON.StandardMaterial("standMat", scene);
+                        standMaterial.diffuseColor = new BABYLON.Color3(0.7, 0.7, 0.7);
+
+                        standMaterial.diffuseTexture = new BABYLON.Texture("textures/logo.jpeg", scene);
+                        standMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+
+                        stand.material = standMaterial;
+                        stand.receiveShadows = true;
+                    }
+                };
+
+                const positions = [
+                    {xMin: -54, xMax: 54, z: -36 - standDepth / 2, rotation: 0, direction: 'forward'},
+                    {xMin: -54, xMax: 54, z: 36 + standDepth / 2, rotation: Math.PI, direction: 'backward'},
+                    {x: -54 - standDepth / 2, zMin: -36, zMax: 36, rotation: Math.PI / 2, direction: 'right'},
+                    {x: 54 + standDepth / 2, zMin: -36, zMax: 36, rotation: -Math.PI / 2, direction: 'left'}
+                ];
+
+                for (let pos of [positions[0], positions[1]]) {
+                    for (let x = pos.xMin; x <= pos.xMax; x += standWidth + gap) {
+                        createStandSection(new BABYLON.Vector3(x, 0, pos.z), pos.rotation, pos.direction);
+                    }
+                }
+
+                for (let pos of [positions[2], positions[3]]) {
+                    for (let z = pos.zMin; z <= pos.zMax; z += standWidth + gap) {
+                        createStandSection(new BABYLON.Vector3(pos.x, 0, z), pos.rotation, pos.direction);
+                    }
+                }
+            };
+
+            
+
+            // Define pitch boundaries
+            const pitchBounds = {
+                minX: -105 / 2,
+                maxX: 105 / 2,
+                minZ: -68 / 2,
+                maxZ: 68 / 2
+            };
+
+        
+
+            // Run the render loop
+            engine.runRenderLoop(() => {
+                scene.render();
+            });
+
+            // Resize the engine on window resize
+            window.addEventListener("resize", () => {
+                engine.resize();
+            });
+
+            canvas.addEventListener('wheel', (event) => {
+                event.preventDefault();
+            }, { passive: false });
+            // Function to create a simple character body
+            function createCharacter(color, scene) {
+                // Create the body parts
+                const head = BABYLON.MeshBuilder.CreateDisc("disc", {radius: .5, tessellation: 64}, scene);
+                head.rotation.x = Math.PI / 2;
+                //const torso = BABYLON.MeshBuilder.CreateBox("torso", { height: 2, width: 1, depth: 0.5 }, scene);
+                //const leftArm = BABYLON.MeshBuilder.CreateCylinder("leftArm", { height: 1.5, diameter: 0.3 }, scene);
+                //const rightArm = BABYLON.MeshBuilder.CreateCylinder("rightArm", { height: 1.5, diameter: 0.3 }, scene);
+                //const leftLeg = BABYLON.MeshBuilder.CreateCylinder("leftLeg", { height: 1.5, diameter: 0.5 }, scene);
+                //const rightLeg = BABYLON.MeshBuilder.CreateCylinder("rightLeg", { height: 1.5, diameter: 0.5 }, scene);
+
+                // Position the body parts
+                head.position.y = .5;
+                //torso.position.y = 1.5;
+                //leftArm.position = new BABYLON.Vector3(-0.8, 1.5, 0);
+                //rightArm.position = new BABYLON.Vector3(0.8, 1.5, 0);
+                //leftLeg.position = new BABYLON.Vector3(-0.3, 0.25, 0);
+                //rightLeg.position = new BABYLON.Vector3(0.3, 0.25, 0);
+
+                // Create a parent mesh for the character
+                const character = new BABYLON.Mesh("playerMarker", scene);
+                head.parent = character;
+                //torso.parent = character;
+                //leftArm.parent = character;
+                //rightArm.parent = character;
+                //leftLeg.parent = character;
+                //rightLeg.parent = character;
+
+                // Apply material to the character
+                const material = new BABYLON.StandardMaterial("playerMaterial", scene);
+                material.diffuseColor = color;
+                head.material = material;
+                //torso.material = material;
+                //leftArm.material = material;
+                //rightArm.material = material;
+                //leftLeg.material = material;
+                //rightLeg.material = material;
+
+                // Position the character
+                character.position.y = 0.5;
+
+                return character;
+            }
+
+            // Function to add shadows to the character
+            function addShadows(character, scene) {
+                const light = new BABYLON.DirectionalLight("dirLight", new BABYLON.Vector3(-1, -2, -1), scene);
+                const shadowGenerator = new BABYLON.ShadowGenerator(1024, light);
+                shadowGenerator.addShadowCaster(character, true);
+
+                character.receiveShadows = true;
+            }
+
+           
+            // Function to create the player marker with shadows
+            function createPlayerMarker(color, scene) {
+                const character = createCharacter(color, scene);
+                addShadows(character, scene);
+                return character;
+            }
+
+            // Create default player markers
+            for (let i = 0; i < 11; i++) {
+                homeMarkers[`home-${i}`] = createPlayerMarker(new BABYLON.Color3(0.7, 0.7, 0), scene);
+                awayMarkers[`away-${i}`] = createPlayerMarker(new BABYLON.Color3(0.7, 0.7, 1), scene);
+            }
+
+
+            engine.runRenderLoop(() => {
+                scene.render();
+            });
+
+            window.addEventListener('resize', () => {
+                engine.resize();
+            });
+
+
+            function updateMarkers(currentTime) {
+                const ballXColumn = document.getElementById('ballXColumn').value;
+                const ballYColumn = document.getElementById('ballYColumn').value;
+                const ballZColumn = document.getElementById('ballZColumn').value;
+
+                const ballData = findNearestDataPoint(currentTime, dataPoints, [ballXColumn, ballYColumn, ballZColumn]);
+                if (ballData) {
+                    ballMarker.position.set(ballData[ballXColumn], ballData[ballZColumn], ballData[ballYColumn]);
+                }
+
+                updateTeamMarkers(currentTime, homeData, homeMarkers, 'home');
+                updateTeamMarkers(currentTime, awayData, awayMarkers, 'away');
+            }
+
+            function updateTeamMarkers(currentTime, data, markers, team) {
+                const dataPoint = findNearestDataPoint(currentTime, data, ['timestamp']);
+                if (!dataPoint || !dataPoint.data) return;
+
+                // Iterate over each player in the dataPoint
+                dataPoint.data.forEach((player, index) => {
+                    const { x, y, z } = player;
+                    const marker = markers[`${team}-${index}`];
+                    if (marker) {
+                        marker.position.set(parseFloat(x), parseFloat(z), parseFloat(y));
+                    }
+                });
+            }
+
+            function updateGraphs(currentTime) {
+                chartObjects.forEach((chart, index) => {
+                    const columnSelect = document.querySelector(`.columnSelect[data-index="${index}"]`);
+                    if (columnSelect && columnSelect.value) {
+                        const column = columnSelect.value;
+                        const filteredData = dataPoints.filter(point => point.timestamp >= currentTime - CHUNK_SIZE && point.timestamp <= currentTime)
+                                                        .map(point => ({ x: point.timestamp, y: point[column] }));
+                        if (!arraysEqual(chart.data.datasets[0].data, filteredData)) {
+                            chart.data.datasets[0].data = filteredData;
+                            chart.options.plugins.annotation.annotations.currentTimestampLine.value = currentTime;
+                            chart.update();
+                        }
+                    }
+                });
+            }
+
+            function findNearestDataPoint(currentTime, data, columns) {
+                let low = 0, high = data.length - 1;
+                while (low <= high) {
+                    const mid = Math.floor((low + high) / 2);
+                    if (data[mid].timestamp < currentTime) {
+                        low = mid + 1;
+                    } else if (data[mid].timestamp > currentTime) {
+                        high = mid - 1;
+                    } else {
+                        return data[mid];
+                    }
+                }
+                return data[Math.max(low - 1, 0)];
+            }
+
+            document.getElementById('videoPlayer').addEventListener('play', () => {
+                dataPlayStartTime = Date.now();
+                requestAnimationFrame(updateTimestampDisplay);
+                requestAnimationFrame(updateDataPlayback);
+            });
+
+            function updateDataPlayback() {
+                const currentTime = (Date.now() - dataPlayStartTime) / 1000 * dataPlaybackRate + setDataTime;
+                updateMarkers(currentTime);
+                updateGraphs(currentTime);
+                if (isPlaying) {
+                    requestAnimationFrame(updateDataPlayback);
+                }
+            }
+
+            function formatTime(seconds) {
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                const secs = Math.floor(seconds % 60);
+                const millis = Math.floor((seconds * 1000) % 1000);
+                return `${hours}:${minutes < 10 ? '0' : ''}${minutes}:${secs < 10 ? '0' : ''}${secs}.${millis < 100 ? '0' : ''}${millis < 10 ? '0' : ''}${millis}`;
+            }
+
+            function updateTimestampDisplay() {
+                const videoPlayer = document.getElementById('videoPlayer');
+                const timestampDisplay = document.getElementById('timestampDisplay');
+                const currentTime = videoPlayer.currentTime;
+                timestampDisplay.textContent = formatTime(currentTime);
+                if (isPlaying) {
+                    requestAnimationFrame(updateTimestampDisplay);
+                }
+            }
+
+            document.getElementById('playbackRate').addEventListener('input', function(event) {
+                const rate = parseFloat(event.target.value);
+                const videoPlayer = document.getElementById('videoPlayer');
+                videoPlayer.playbackRate = rate;
+                dataPlaybackRate = rate;
+                document.getElementById('rateDisplay').textContent = rate + 'x';
+            });
+
+            document.getElementById('videoPlayer').addEventListener('play', () => {
+                if (!isPlaying) {
+                    const currentTime = videoPlayer.currentTime;
+                    dataPlayStartTime = Date.now() - ((initialPlay ? setDataTime : lastPausedTime) * 1000 / dataPlaybackRate);
+                    isPlaying = true;
+                    initialPlay = false;
+                    requestAnimationFrame(updateTimestampDisplay);
+                    requestAnimationFrame(updateDataPlayback);
+                }
+            });
+
+            document.getElementById('videoPlayer').addEventListener('pause', () => {
+                lastPausedTime = videoPlayer.currentTime;
+                setDataTime = lastPausedTime - setVideoTime;
+                isPlaying = false;
+            });
+
+            document.getElementById('videoPlayer').addEventListener('ended', () => {
+                isPlaying = false;
+            });
+
+            document.getElementById('setVideoTimeButton').addEventListener('click', function() {
+                setVideoTime = parseFloat(document.getElementById('videoTime').value);
+                const videoPlayer = document.getElementById('videoPlayer');
+                if (!isNaN(setVideoTime) && setVideoTime >= 0) {
+                    videoPlayer.currentTime = setVideoTime;
+                    setDataTime = setVideoTime;
+                    initialPlay = true; // Indicate the next play should use setVideoTime
+                }
+            });
+
+            document.getElementById('setDataTimeButton').addEventListener('click', function() {
+                setDataTime = parseFloat(document.getElementById('dataTime').value);
+                if (!isNaN(setDataTime) && setDataTime >= 0) {
+                    updateMarkers(setDataTime);
+                    updateGraphs(setDataTime);
+                    initialPlay = true; // Indicate the next play should use setDataTime
+                }
+            });
+            let initialSyncOffset = 0; // Global variable to store the sync offset
+
+            document.getElementById('playButton').addEventListener('click', function() {
+                const videoPlayer = document.getElementById('videoPlayer');
+
+                // Set the video time to the user-defined starting point
+                videoPlayer.currentTime = setVideoTime;
+
+                // Calculate the difference between video time and data time
+                dataPlayStartTime = Date.now() - (setDataTime * 1000 / dataPlaybackRate);
+
+                // Calculate and store the initial sync difference between video and data times
+                initialSyncOffset = setVideoTime - setDataTime;
+                console.log(`Initial sync offset stored: ${initialSyncOffset}s`);
+
+                // Update markers and graphs to the initial data time
+                updateMarkers(setDataTime);
+                updateGraphs(setDataTime);
+
+                // Start the video playback
+                videoPlayer.play();
+                isPlaying = true;
+                initialPlay = false;
+            });
+            document.getElementById('playControlButton').addEventListener('click', function() {
+                const videoPlayer = document.getElementById('videoPlayer');
+                if (!isPlaying) {
+                    // Set the video current time to the last paused time
+                    videoPlayer.currentTime = lastPausedTime;
+
+                    // Calculate the data play start time using the last paused data time
+                    dataPlayStartTime = Date.now() - (setDataTime * 1000 / dataPlaybackRate);
+
+                    // Resume video playback
+                    videoPlayer.play();
+
+                    // Indicate that playback is ongoing
+                    isPlaying = true;
+
+                    // Resume updating data playback and timestamp display
+                    requestAnimationFrame(updateDataPlayback);
+                    requestAnimationFrame(updateTimestampDisplay);
+                }
+            });
+            
+
+
+            document.getElementById('stopControlButton').addEventListener('click', function() {
+                const videoPlayer = document.getElementById('videoPlayer');
+                videoPlayer.pause(); // Pause the video playback
+
+                // Store the current time of the video
+                lastPausedTime = videoPlayer.currentTime;
+
+                // Calculate the data time based on the current video time and initial video time
+                setDataTime = lastPausedTime - setVideoTime;
+
+                // Indicate that playback is stopped
+                isPlaying = false;
+            });
+
+            document.getElementById('resetButton').addEventListener('click', function() {
+                setVideoTime = 0;
+                setDataTime = 0;
+                const videoPlayer = document.getElementById('videoPlayer');
+                videoPlayer.currentTime = 0;
+                updateMarkers(0);
+                updateGraphs(0);
+                initialPlay = false; // Indicate the next play should start from the beginning
+            });
+
+            document.getElementById('forwardButton').addEventListener('click', function() {
+                const stepLength = parseFloat(document.getElementById('stepLength').value);
+                const videoPlayer = document.getElementById('videoPlayer');
+                const newTime = videoPlayer.currentTime + stepLength;
+                videoPlayer.currentTime = newTime; // Move the video forward
+
+                // Update the data time based on the new video time
+                setDataTime = newTime - setVideoTime;
+
+                // Store the new time as the last paused time
+                lastPausedTime = newTime;
+
+                // Update markers and graphs to reflect the new data time
+                updateMarkers(setDataTime);
+                updateGraphs(setDataTime);
+            });
+
+            document.getElementById('backwardButton').addEventListener('click', function() {
+                const stepLength = parseFloat(document.getElementById('stepLength').value);
+                const videoPlayer = document.getElementById('videoPlayer');
+                const newTime = videoPlayer.currentTime - stepLength;
+                videoPlayer.currentTime = newTime; // Move the video backward
+
+                // Update the data time based on the new video time
+                setDataTime = newTime - setVideoTime;
+
+                // Store the new time as the last paused time
+                lastPausedTime = newTime;
+
+                // Update markers and graphs to reflect the new data time
+                updateMarkers(setDataTime);
+                updateGraphs(setDataTime);
+            });
+
+            document.querySelectorAll('.toggle-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    const target = document.getElementById(button.dataset.target);
+                    if (target.style.display === 'none' || target.style.display === '') {
+                        target.style.display = 'flex'; // Show the section
+                    } else {
+                        target.style.display = 'none'; // Hide the section
+                    }
+                });
+            });
+
+            document.getElementById('setFrameRangeButton').addEventListener('click', function () {
+                // Fetch the start and end frames from the input fields
+                const startFrameInput = document.getElementById('startFrame');
+                const endFrameInput = document.getElementById('endFrame');
+
+                // Parse the input values only once
+                const startFrame = parseInt(startFrameInput.value);
+                const endFrame = parseInt(endFrameInput.value);
+
+                // Validate the inputs
+                if (isNaN(startFrame) || isNaN(endFrame) || startFrame >= endFrame) {
+                    alert("Please enter valid start and end frames.");
+                    return;
+                }
+
+                console.log(`Start Frame (A): ${startFrame}, End Frame (B): ${endFrame}`);
+
+                // Find the timestamps for the start and end frames
+                const startDataPoint = dataPoints.find(row => parseInt(row.N) === startFrame);
+                const endDataPoint = dataPoints.find(row => parseInt(row.N) === endFrame);
+
+                if (!startDataPoint || !endDataPoint) {
+                    alert("Frames not found in the data.");
+                    return;
+                }
+
+                const startFrameTime = parseFloat(startDataPoint.timestamp);
+                const endFrameTime = parseFloat(endDataPoint.timestamp);
+
+                console.log(`Start Timestamp: ${startFrameTime}s, End Timestamp: ${endFrameTime}s`);
+
+                // Call the function to play data between the selected frames
+                playDataBetweenFrames(startFrame, endFrame);
+            });
+            const frameRate = 30; // Standard frame rate of 30 fps
+            let initialFrame = null; 
+
+            // Function to find the first 'N' value from the data
+            function detectInitialFrame(data) {
+                if (data.length === 0) return null;
+                const firstDataPoint = data[0];
+                return parseInt(firstDataPoint.N);
+            }
+
+            function playDataBetweenFrames(startFrame, endFrame) {
+                const videoPlayer = document.getElementById('videoPlayer');
+                const frameSlider = document.getElementById('frameSlider');
+                const currentFrameLabel = document.getElementById('currentFrameLabel');
+                isPlaying = true;
+
+                // Ensure the frames are defined and valid
+                if (isNaN(startFrame) || isNaN(endFrame) || startFrame >= endFrame) {
+                    alert("Please enter valid start and end frames.");
+                    return;
+                }
+
+                if (initialFrame === null) {
+                    alert("Initial frame not detected. Please upload data first.");
+                    return;
+                }
+
+                // Calculate frame difference and time adjustment
+                const frameDifference = startFrame - initialFrame;
+                const timeAdjustment = frameDifference / frameRate;
+
+                const adjustedStartTime = setVideoTime + timeAdjustment + initialSyncOffset;
+                const adjustedEndTime = adjustedStartTime + ((endFrame - startFrame) / frameRate);
+
+                console.log(`Adjusted Start Time: ${adjustedStartTime}, Adjusted End Time: ${adjustedEndTime}`);
+
+                videoPlayer.currentTime = adjustedStartTime;
+                videoPlayer.play();
+
+                // Configure the slider with actual frame numbers
+                frameSlider.min = startFrame;
+                frameSlider.max = endFrame;
+                frameSlider.value = startFrame;
+
+                function updatePlayback() {
+                    const currentTime = videoPlayer.currentTime;
+                    
+                    // Calculate the current frame based on the current time
+                    const currentFrame = Math.round(initialFrame + ((currentTime - setVideoTime - initialSyncOffset) * frameRate));
+
+                    // Update the slider position and label with the current frame
+                    frameSlider.value = currentFrame;
+                    currentFrameLabel.textContent = `Frame: ${currentFrame}`;
+
+                    // Stop playback if the current frame exceeds the end frame
+                    if (currentFrame >= endFrame) {
+                        console.log(`Reached end frame: ${endFrame}`);
+                        videoPlayer.pause();
+                        isPlaying = false;
+                        return;
+                    }
+
+                    updateMarkers(currentTime - initialSyncOffset);
+                    updateGraphs(currentTime - initialSyncOffset);
+
+                    if (isPlaying) {
+                        requestAnimationFrame(updatePlayback);
+                    }
+                }
+
+                requestAnimationFrame(updatePlayback);
+
+                // Add event listener for the slider to allow manual control using frame numbers
+                frameSlider.addEventListener('input', function () {
+                    const selectedFrame = parseInt(frameSlider.value);
+                    const frameOffset = selectedFrame - initialFrame;
+                    const newTime = setVideoTime + (frameOffset / frameRate) + initialSyncOffset;
+
+                    // Update video playback position and markers based on the selected frame
+                    videoPlayer.currentTime = newTime;
+                    currentFrameLabel.textContent = `Frame: ${selectedFrame}`;
+                    
+                    updateMarkers(newTime - initialSyncOffset);
+                    updateGraphs(newTime - initialSyncOffset);
+                });
+            }
+
+                        
+        });
+    </script>
+    </body>
+</html>
